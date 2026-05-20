@@ -12,10 +12,10 @@ app.post('/api/verify-slip', upload.single('slip'), async (req, res) => {
         if (!req.file) return res.status(400).json({ success: false, message: 'ไม่มีไฟล์สลิป' });
 
         const form = new FormData();
-        // ส่งไฟล์ในชื่อ field 'file' ซึ่งเป็นชื่อที่ Endpoint ของคุณรองรับ
+        // ใช้ชื่อ field 'file' ตามที่ Endpoint 66773 กำหนด
         form.append('file', req.file.buffer, { filename: 'slip.jpg' });
 
-        // ยิงไปที่ Endpoint ตามที่คุณได้มาในหน้า Dashboard
+        // ยิงไปที่ Endpoint สาขา 66773 โดยตรง
         const response = await axios.post('https://api.slipok.com/api/line/apikey/66773', form, {
             headers: {
                 ...form.getHeaders(),
@@ -23,15 +23,15 @@ app.post('/api/verify-slip', upload.single('slip'), async (req, res) => {
             }
         });
 
-        // ส่งข้อมูลที่ได้จาก SlipOK กลับไปที่หน้าเว็บเพื่อดูผลลัพธ์
+        // ส่งผลลัพธ์กลับไปหน้าเว็บทั้งหมด เพื่อให้เราเห็นว่า SlipOK ตอบว่าอะไร
         res.json({ success: true, result: response.data });
 
     } catch (error) {
-        // ดึง Error ออกมาดูแบบละเอียด
         const errorDetail = error.response ? error.response.data : error.message;
         console.error("Error Detail:", errorDetail);
         res.status(500).json({ success: false, message: 'ตรวจสอบไม่ผ่าน', detail: errorDetail });
     }
 });
 
-app.listen(3000, () => console.log('Server running on port 3000'));
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
