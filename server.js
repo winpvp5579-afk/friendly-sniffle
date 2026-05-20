@@ -1,22 +1,29 @@
 const express = require('express');
 const multer = require('multer');
-const { SlipVerify } = require('slipverify');
+// 1. นำเข้า Library ที่จำเป็น
+const { inquiry } = require('slipverify');
+const { slipok } = require('slipverify/providers');
 
 const app = express();
 const upload = multer({ storage: multer.memoryStorage() });
 
-// ใส่ API Key ที่ได้มาจากหน้า Dashboard ของ SlipVerify.com
-const sv = new SlipVerify({ apiKey: 'YOUR_SLIPVERIFY_API_KEY' });
-
 app.use(express.static(__dirname));
 
+// 2. สร้าง Endpoint สำหรับรับรูปภาพสลิป
 app.post('/api/verify-slip', upload.single('slip'), async (req, res) => {
     try {
-        if (!req.file) return res.status(400).json({ success: false, message: 'ไม่มีไฟล์สลิป' });
+        if (!req.file) return res.status(400).json({ success: false, message: 'ไม่มีไฟล์' });
 
-        // ใช้คำสั่ง .verify() จาก SDK 
-        // ระบบจะจัดการส่งข้อมูลเข้า API ที่ถูกต้องให้ทันที ไม่ต้องกังวลเรื่อง Endpoint
-        const result = await sv.verify(req.file.buffer);
+        // 3. ตรงนี้คือจุดที่คุณต้องเอา Payload มาใส่
+        // หมายเหตุ: Library นี้ต้องการ Payload (สตริง QR Code)
+        // ถ้าคุณยังไม่มีระบบอ่าน QR Code จากรูป ผมแนะนำให้ใช้ Library เพิ่มเติม
+        const result = await inquiry({
+            provider: slipok({ 
+                branchId: '66773', // ใส่เลขสาขาของคุณ
+                apiKey: 'SLIPOKWS7CZU1' // ใส่ API Key ของคุณ
+            }),
+            payload: '000201...' // ตรงนี้ต้องเป็นค่า QR Code ที่อ่านได้จากไฟล์รูป
+        });
 
         res.json({ success: true, data: result });
     } catch (error) {
@@ -24,5 +31,4 @@ app.post('/api/verify-slip', upload.single('slip'), async (req, res) => {
     }
 });
 
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+app.listen(3000, () => console.log('Server running on port 3000'));
