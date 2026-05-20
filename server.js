@@ -1,36 +1,42 @@
 const express = require('express');
 const axios = require('axios');
 const multer = require('multer');
-const path = require('path');
-
 const app = express();
 const upload = multer({ storage: multer.memoryStorage() });
 
-// 1. ส่งไฟล์ index.html ให้กับผู้ที่เข้ามาเยี่ยมชมหน้าเว็บ
+// เสิร์ฟหน้าเว็บ index.html
 app.use(express.static(__dirname));
 
-// 2. API รับสลิปและตรวจสอบ
 app.post('/api/verify-slip', upload.single('slip'), async (req, res) => {
     try {
         if (!req.file) return res.status(400).json({ success: false, message: 'กรุณาอัปโหลดสลิป' });
 
-        // แปลงไฟล์เป็น Base64
+        // 1. แปลงไฟล์รูปภาพเป็น Base64
         const imageBase64 = req.file.buffer.toString('base64');
-
-        // ตรวจสอบกับ SlipOK
+        
+        // 2. ตรวจสอบสลิปกับ SlipOK (ใช้ API Key ของคุณ)
         const slipResult = await axios.post('https://api.slipok.com/api/line/apikey/66773', 
             { image: imageBase64 }, 
-            { headers: { 'x-api-key': 'SLIPOKWS7CZU1' } } // API Key ของคุณ
+            { headers: { 'x-api-key': 'SLIPOKWS7CZU1' } }
         );
 
-        // ตรวจสอบสถานะการโอน
         if (slipResult.data.data.status === 'SUCCESS') {
             const amount = slipResult.data.data.amount;
             const { username, message } = req.body;
 
-            // ส่งเข้า Discord (ใส่ Webhook URL ของคุณที่นี่)
-            await axios.post('YOUR_DISCORD_WEBHOOK_URL_HERE', {
+            // 3. แจ้งเตือนเข้า Discord (ใช้ตัวแปรจาก Environment Variables)
+            await axios.post(process.env.DISCORD_WEBHOOK_URL, {
                 content: `🎉 **${username}** โดเนทมา **${amount}** บาท!\nข้อความ: ${message}`
+            });
+
+            // 4. แจ้งเตือนเข้า Streamlabs (ใช้ตัวแปรจาก Environment Variables)
+            await axios.post('https://streamlabs.com/api/v1.0/alerts', {
+                access_token: process.env.STREAMLABS_TOKEN,
+                type: 'donation',
+                name: username,
+                message: message,
+                amount: amount,
+                currency: 'THB'
             });
 
             res.json({ success: true, message: `ยืนยันยอด ${amount} บาท สำเร็จ!` });
