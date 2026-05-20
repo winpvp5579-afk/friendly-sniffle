@@ -12,23 +12,21 @@ app.post('/api/verify-slip', upload.single('slip'), async (req, res) => {
         if (!req.file) return res.status(400).json({ success: false, message: 'กรุณาอัปโหลดสลิป' });
 
         const form = new FormData();
-        // แก้ไข: เปลี่ยนชื่อ field จาก 'file' เป็น 'files' ตามที่ API แจ้งเตือนใน Error 1000
-        form.append('files', req.file.buffer, { filename: 'slip.jpg' });
+        form.append('image', req.file.buffer, { filename: 'slip.jpg' });
 
-        const slipResult = await axios.post('https://api.slipok.com/api/line/apikey/66773', 
+        // เปลี่ยน header เป็น x-authorization ตามมาตรฐาน OpenAPI ของ SlipOK
+        const slipResult = await axios.post('https://api.slipok.com/api/v1/openapi/verify', 
             form, 
             { 
                 headers: { 
                     ...form.getHeaders(), 
-                    'x-api-key': 'SLIPOKWS7CZU1' 
+                    'x-authorization': 'SLIPOKWS7CZU1' 
                 } 
             }
         );
 
-        console.log("SlipOK Success:", JSON.stringify(slipResult.data));
-
-        if (slipResult.data && (slipResult.data.status === 'success' || slipResult.data.code === 200)) {
-            const amount = slipResult.data.data ? slipResult.data.data.amount : 0;
+        if (slipResult.data && slipResult.data.status === 'success') {
+            const amount = slipResult.data.data.amount;
             const { username, message } = req.body;
 
             await axios.post(process.env.DISCORD_WEBHOOK_URL, {
@@ -37,11 +35,11 @@ app.post('/api/verify-slip', upload.single('slip'), async (req, res) => {
 
             res.json({ success: true, message: `ยืนยันยอด ${amount} บาท สำเร็จ!` });
         } else {
-            res.json({ success: false, message: 'สลิปไม่ถูกต้อง หรือตรวจสอบไม่ผ่าน' });
+            res.status(400).json({ success: false, message: 'สลิปไม่ถูกต้อง' });
         }
     } catch (error) {
-        console.error("Critical Error Detail:", error.response ? error.response.data : error.message);
-        res.status(500).json({ success: false, message: 'ตรวจสอบสลิปไม่ผ่าน (รหัส 1000)' });
+        console.error("Critical Error Detail:", error.response ? JSON.stringify(error.response.data) : error.message);
+        res.status(500).json({ success: false, message: 'ตรวจสอบสลิปไม่ผ่าน' });
     }
 });
 
