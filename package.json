@@ -8,6 +8,8 @@
   "dependencies": {
     "express": "^4.21.0",
     "multer": "^1.4.5-lts.1",
-    "slipverify": "^1.0.0"
+    "slipverify": "^1.0.0",
+    "jimp": "^0.16.1",
+    "qrcode-reader": "^1.0.4"
   }
 }
