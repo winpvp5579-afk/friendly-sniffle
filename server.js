@@ -1,34 +1,40 @@
 const express = require('express');
 const axios = require('axios');
+const multer = require('multer');
 const app = express();
-app.use(express.json());
+const upload = multer({ storage: multer.memoryStorage() });
 
-// API สำหรับรับสลิปไปตรวจสอบที่ SlipOK
-app.post('/verify-slip', async (req, res) => {
-    const { imageRaw, name, message } = req.body;
+// เสิร์ฟหน้าเว็บ index.html ที่คุณทำไว้
+app.use(express.static('.'));
 
+app.post('/api/verify-slip', upload.single('slip'), async (req, res) => {
     try {
-        // ส่งไปตรวจสอบที่ SlipOK
+        // 1. แปลงไฟล์รูปภาพเป็น Base64 เพื่อส่งให้ SlipOK
+        const imageBase64 = req.file.buffer.toString('base64');
+        
+        // 2. ตรวจสอบสลิปกับ SlipOK
         const slipResult = await axios.post('https://api.slipok.com/api/line/apikey/66773', {
-            image: imageRaw
+            image: imageBase64
         }, {
-            headers: { 'x-api-key': 'SLIPOKWS7CZU1' }
+            headers: { 'x-api-key': 'SLIPOKWS7CZU1' } // API Key ของคุณ
         });
 
+        // 3. ถ้าโอนจริง (ตรวจสอบสถานะ)
         if (slipResult.data.data.status === 'SUCCESS') {
-            const amount = slipResult.data.data.amount;
-            
-            // ส่งเข้า Discord (ใส่ Webhook URL ของคุณที่นี่)
-            await axios.post('YOUR_DISCORD_WEBHOOK_URL', {
-                content: `🎉 ${name} โดเนทมา ${amount} บาท! ข้อความ: ${message}`
+            const { amount } = slipResult.data.data;
+            const { username, message } = req.body;
+
+            // 4. ส่งเข้า Discord (นำ Webhook URL ของคุณมาใส่ตรงนี้)
+            await axios.post('YOUR_DISCORD_WEBHOOK_URL_HERE', {
+                content: `🎉 **${username}** โดเนทมา **${amount}** บาท!\nข้อความ: ${message}`
             });
 
-            res.send({ status: 'Success', amount: amount });
+            res.json({ success: true, message: 'ยืนยันการโอนเงินสำเร็จ!' });
         } else {
-            res.status(400).send({ status: 'Failed', message: 'สลิปไม่ถูกต้อง' });
+            res.json({ success: false, message: 'ตรวจสอบสลิปไม่ผ่านหรือสลิปไม่ถูกต้อง' });
         }
     } catch (error) {
-        res.status(500).send({ error: 'Server Error' });
+        res.status(500).json({ success: false, message: 'เกิดข้อผิดพลาดในการตรวจสอบ' });
     }
 });
 
