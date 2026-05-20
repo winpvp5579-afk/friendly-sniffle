@@ -12,7 +12,7 @@ app.post('/api/verify-slip', upload.single('slip'), async (req, res) => {
         if (!req.file) return res.status(400).json({ success: false, message: 'ไม่มีไฟล์สลิป' });
 
         const form = new FormData();
-        // ใช้ชื่อ field 'file' ตามที่ Endpoint 66773 กำหนด
+        // ส่งไฟล์ในชื่อ field 'file' ตามที่ Endpoint 66773 กำหนด
         form.append('file', req.file.buffer, { filename: 'slip.jpg' });
 
         // ยิงไปที่ Endpoint สาขา 66773 โดยตรง
