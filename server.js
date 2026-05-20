@@ -1,7 +1,7 @@
 const express = require('express');
 const axios = require('axios');
 const multer = require('multer');
-const FormData = require('form-data'); // เพิ่มบรรทัดนี้
+const FormData = require('form-data');
 const app = express();
 const upload = multer({ storage: multer.memoryStorage() });
 
@@ -11,11 +11,9 @@ app.post('/api/verify-slip', upload.single('slip'), async (req, res) => {
     try {
         if (!req.file) return res.status(400).json({ success: false, message: 'กรุณาอัปโหลดสลิป' });
 
-        // สร้าง FormData เพื่อส่งไฟล์ให้ SlipOK
         const form = new FormData();
         form.append('files', req.file.buffer, { filename: 'slip.jpg' });
 
-        // เรียก API ของ SlipOK โดยใช้ form-data
         const slipResult = await axios.post('https://api.slipok.com/api/line/apikey/66773', 
             form, 
             { 
@@ -26,7 +24,6 @@ app.post('/api/verify-slip', upload.single('slip'), async (req, res) => {
             }
         );
 
-        // ตรวจสอบผลลัพธ์
         if (slipResult.data && slipResult.data.data && slipResult.data.data.status === 'SUCCESS') {
             const amount = slipResult.data.data.amount;
             const { username, message } = req.body;
@@ -51,7 +48,6 @@ app.post('/api/verify-slip', upload.single('slip'), async (req, res) => {
             res.json({ success: false, message: 'สลิปไม่ถูกต้อง หรือตรวจสอบไม่ผ่าน' });
         }
     } catch (error) {
-        // บันทึก Error จริงๆ เพื่อดูใน Logs ของ Render
         console.error("Error Detail:", error.response ? error.response.data : error.message);
         res.status(500).json({ success: false, message: 'เกิดข้อผิดพลาดในการตรวจสอบสลิป' });
     }
