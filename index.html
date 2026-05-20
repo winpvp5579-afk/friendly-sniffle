@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My DIY Donate Page</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f6f9; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; padding: 20px; box-sizing: border-box; }
+        .donate-card { background: white; padding: 30px; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); width: 100%; max-width: 400px; text-align: center; }
+        h2 { color: #333; margin-bottom: 20px; }
+        .form-group { margin-bottom: 15px; text-align: left; }
+        label { display: block; margin-bottom: 5px; color: #666; font-size: 14px; }
+        input, textarea { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; font-size: 16px; }
+        textarea { resize: none; height: 60px; }
+        button { width: 100%; padding: 12px; background-color: #007bff; color: white; border: none; border-radius: 8px; font-size: 18px; cursor: pointer; font-weight: bold; transition: 0.2s; }
+        button:hover { background-color: #0056b3; }
+        
+        /* ส่วนของพื้นที่แสดง QR Code (ซ่อนไว้ตอนแรก) */
+        #qrSection { display: none; margin-top: 25px; border-top: 2px dashed #eee; padding-top: 20px; }
+        .qr-image { width: 220px; height: 220px; margin: 15px auto; display: block; border: 1px solid #eee; padding: 10px; border-radius: 10px; }
+        .success-btn { background-color: #28a745; margin-top: 15px; }
+        .success-btn:hover { background-color: #218838; }
+    </style>
+</head>
+<body>
+
+<div class="donate-card">
+    <h2>💸 สนับสนุนฉัน (Donate)</h2>
+    
+    <form id="donateForm">
+        <div class="form-group">
+            <label for="username">ชื่อผู้โดเนท</label>
+            <input type="text" id="username" placeholder="ใส่ชื่อของคุณ" required>
+        </div>
+        <div class="form-group">
+            <label for="amount">จำนวนเงิน (บาท)</label>
+            <input type="number" id="amount" placeholder="ระบุจำนวนเงิน" min="1" required>
+        </div>
+        <div class="form-group">
+            <label for="message">ข้อความสั้นๆ</label>
+            <textarea id="message" placeholder="ข้อความให้กำลังใจ..."></textarea>
+        </div>
+        <button type="submit" id="submitBtn">ถัดไป (สร้าง QR Code)</button>
+    </form>
+
+    <div id="qrSection">
+        <h3>สแกนจ่ายเงินตรงนี้ได้เลย</h3>
+        <p style="color: #dc3545; font-size: 14px; font-weight: bold;">⚠️ กรุณาโอนยอดเงินตรงตามที่ระบุ</p>
+        
+        <img id="qrCodeImg" class="qr-image" src="" alt="PromptPay QR Code">
+        
+        <form id="uploadSlipForm">
+            <div class="form-group">
+                <label for="slipFile"><b>ส่งสลิปเพื่อยืนยันยอดโอน</b></label>
+                <input type="file" id="slipFile" accept="image/*" required>
+            </div>
+            <button type="submit" class="success-btn">ส่งสลิปยืนยันการโดเนท</button>
+        </form>
+    </div>
+</div>
+
+<script>
+    // 👑 ใส่เบอร์พร้อมเพย์ที่ถูกต้องของคุณเรียบร้อยแล้วครับ
+    const MY_PROMPTPAY_ID = "0621684332"; 
+
+    // ขั้นตอนการเจน QR Code ล็อกจำนวนเงิน
+    document.getElementById('donateForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        const amount = document.getElementById('amount').value;
+        const qrUrl = `https://promptpay.io/${MY_PROMPTPAY_ID}/${amount}.png`;
+        
+        document.getElementById('qrCodeImg').src = qrUrl;
+        document.getElementById('qrSection').style.display = 'block';
+        document.getElementById('submitBtn').disabled = true;
+        document.getElementById('submitBtn').innerText = 'กำลังรอการชำระเงิน...';
+        document.getElementById('submitBtn').style.backgroundColor = '#6c757d';
+    });
+
+    // ขั้นตอนการส่งสลิปวิ่งไปหาหลังบ้าน server.js
+    document.getElementById('uploadSlipForm').addEventListener('submit', async function(e) {
+        e.preventDefault();
+        
+        const name = document.getElementById('username').value;
+        const amount = document.getElementById('amount').value;
+        const message = document.getElementById('message').value;
+        const slipFile = document.getElementById('slipFile').files[0];
+
+        // เตรียมแพ็กข้อมูลในรูปแบบ FormData
+        const formData = new FormData();
+        formData.append('username', name);
+        formData.append('amount', amount);
+        formData.append('message', message);
+        formData.append('slip', slipFile);
+
+        try {
+            // ส่งข้อมูลไปหลังบ้านที่พอร์ต 3000
+            const response = await fetch('http://localhost:3000/api/verify-slip', {
+                method: 'POST',
+                body: formData
+            });
+
+            const result = await response.json();
+
+            if (result.success) {
+                alert(`🎉 ${result.message}`);
+                window.location.reload(); // รีเฟรชหน้าเว็บกลับไปเริ่มต้นเมื่อสำเร็จ
+            } else {
+                alert(`❌ เกิดข้อผิดพลาด: ${result.message}`);
+            }
+
+        } catch (error) {
+            console.error('Error:', error);
+            alert('ไม่สามารถเชื่อมต่อกับเซิร์ฟเวอร์หลังบ้านได้ (ตรวจสอบว่าได้เปิด node server.js ใน CMD หรือยัง)');
+        }
+    });
+</script>
+</body>
+</html>
