@@ -14,12 +14,12 @@ app.post('/api/verify-slip', upload.single('slip'), async (req, res) => {
         const form = new FormData();
         form.append('files', req.file.buffer, { filename: 'slip.jpg' });
 
-        // ปรับการส่ง Header ให้ชัดเจนที่สุด
+        // ใช้ URL สาขา 66773 และส่ง API Key ใน Header
         const slipResult = await axios.post('https://api.slipok.com/api/line/apikey/66773', 
             form, 
             { 
                 headers: { 
-                    ...form.getHeaders(), 
+                    ...form.getHeaders(),
                     'x-api-key': 'SLIPOKWS7CZU1'
                 } 
             }
@@ -29,10 +29,12 @@ app.post('/api/verify-slip', upload.single('slip'), async (req, res) => {
             const amount = slipResult.data.data.amount;
             const { username, message } = req.body;
 
+            // แจ้งเตือน Discord
             await axios.post(process.env.DISCORD_WEBHOOK_URL, {
                 content: `🎉 **${username}** โดเนทมา **${amount}** บาท!\nข้อความ: ${message}`
             });
 
+            // แจ้งเตือน Streamlabs
             await axios.post('https://streamlabs.com/api/v1.0/alerts', {
                 access_token: process.env.STREAMLABS_TOKEN,
                 type: 'donation',
@@ -48,7 +50,7 @@ app.post('/api/verify-slip', upload.single('slip'), async (req, res) => {
         }
     } catch (error) {
         console.error("Error Detail:", error.response ? error.response.data : error.message);
-        res.status(500).json({ success: false, message: 'เซิร์ฟเวอร์ขัดข้อง' });
+        res.status(500).json({ success: false, message: 'เกิดข้อผิดพลาดในการตรวจสอบสลิป' });
     }
 });
 
