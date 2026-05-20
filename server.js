@@ -12,36 +12,27 @@ app.post('/api/verify-slip', upload.single('slip'), async (req, res) => {
         if (!req.file) return res.status(400).json({ success: false, message: 'กรุณาอัปโหลดสลิป' });
 
         const form = new FormData();
-        form.append('files', req.file.buffer, { filename: 'slip.jpg' });
+        // สำหรับ Endpoint นี้ มักจะใช้ชื่อ field ว่า 'file' (ไม่ใช่ 'files')
+        form.append('file', req.file.buffer, { filename: 'slip.jpg' });
 
-        // ใช้ URL สาขา 66773 และส่ง API Key ใน Header
+        // URL ที่คุณระบุมา
         const slipResult = await axios.post('https://api.slipok.com/api/line/apikey/66773', 
             form, 
             { 
                 headers: { 
-                    ...form.getHeaders(),
-                    'x-api-key': 'SLIPOKWS7CZU1'
+                    ...form.getHeaders(), 
+                    'x-api-key': 'SLIPOKWS7CZU1' 
                 } 
             }
         );
 
-        if (slipResult.data && slipResult.data.data && slipResult.data.data.status === 'SUCCESS') {
+        if (slipResult.data && slipResult.data.status === 'success') { // ปรับเช็คสถานะตามมาตรฐาน Line API
             const amount = slipResult.data.data.amount;
             const { username, message } = req.body;
 
             // แจ้งเตือน Discord
             await axios.post(process.env.DISCORD_WEBHOOK_URL, {
                 content: `🎉 **${username}** โดเนทมา **${amount}** บาท!\nข้อความ: ${message}`
-            });
-
-            // แจ้งเตือน Streamlabs
-            await axios.post('https://streamlabs.com/api/v1.0/alerts', {
-                access_token: process.env.STREAMLABS_TOKEN,
-                type: 'donation',
-                name: username,
-                message: message,
-                amount: amount,
-                currency: 'THB'
             });
 
             res.json({ success: true, message: `ยืนยันยอด ${amount} บาท สำเร็จ!` });
