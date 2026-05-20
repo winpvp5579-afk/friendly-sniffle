@@ -7,24 +7,39 @@
     <input type="file" id="slip"><br>
     <button onclick="submitSlip()">ส่งสลิปโดเนท</button>
 
-    <script>
-        async function submitSlip() {
-            const file = document.getElementById('slip').files[0];
-            const reader = new FileReader();
-            reader.onload = async (e) => {
-                const response = await fetch('/verify-slip', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ 
-                        imageRaw: e.target.result.split(',')[1], 
-                        name: document.getElementById('name').value,
-                        message: document.getElementById('message').value
-                    })
-                });
-                alert(await response.text());
-            };
-            reader.readAsDataURL(file);
+   <script>
+    async function submitSlip() {
+        const file = document.getElementById('slip').files[0];
+        const name = document.getElementById('name').value;
+        const message = document.getElementById('message').value;
+
+        if (!file || !name) {
+            alert("กรุณากรอกชื่อและเลือกไฟล์สลิป");
+            return;
         }
-    </script>
+
+        // ใช้ FormData เพื่อให้ Multer ใน server.js อ่านไฟล์ได้ง่าย
+        const formData = new FormData();
+        formData.append('username', name);
+        formData.append('message', message);
+        formData.append('slip', file); // 'slip' ต้องตรงกับใน server.js
+
+        try {
+            const response = await fetch('/api/verify-slip', {
+                method: 'POST',
+                body: formData // ส่งเป็น FormData ไม่ต้องกำหนด headers
+            });
+
+            const result = await response.json();
+            alert(result.message);
+            if (result.success) {
+                window.location.reload();
+            }
+        } catch (error) {
+            console.error(error);
+            alert("เกิดข้อผิดพลาดในการส่งข้อมูล");
+        }
+    }
+</script>
 </body>
 </html>
