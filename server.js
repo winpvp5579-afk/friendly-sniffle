@@ -14,11 +14,12 @@ app.post('/api/verify-slip', upload.single('slip'), async (req, res) => {
         const form = new FormData();
         form.append('files', req.file.buffer, { filename: 'slip.jpg' });
 
+        // ส่ง Header ให้ถูกต้องตามมาตรฐาน SlipOK
         const slipResult = await axios.post('https://api.slipok.com/api/line/apikey/66773', 
             form, 
             { 
                 headers: { 
-                    ...form.getHeaders(), 
+                    ...form.getHeaders(),
                     'x-api-key': 'SLIPOKWS7CZU1' 
                 } 
             }
@@ -28,12 +29,10 @@ app.post('/api/verify-slip', upload.single('slip'), async (req, res) => {
             const amount = slipResult.data.data.amount;
             const { username, message } = req.body;
 
-            // แจ้งเตือน Discord
             await axios.post(process.env.DISCORD_WEBHOOK_URL, {
                 content: `🎉 **${username}** โดเนทมา **${amount}** บาท!\nข้อความ: ${message}`
             });
 
-            // แจ้งเตือน Streamlabs
             await axios.post('https://streamlabs.com/api/v1.0/alerts', {
                 access_token: process.env.STREAMLABS_TOKEN,
                 type: 'donation',
