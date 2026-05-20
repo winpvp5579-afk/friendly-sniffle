@@ -12,14 +12,15 @@ app.post('/api/verify-slip', upload.single('slip'), async (req, res) => {
         if (!req.file) return res.status(400).json({ success: false, message: 'ไม่มีไฟล์สลิป' });
 
         const form = new FormData();
-        form.append('file', req.file.buffer, { filename: 'slip.jpg' });
+// แก้ไขตรงนี้เป็น 'files'
+form.append('files', req.file.buffer, { filename: 'slip.jpg' }); 
 
-        const response = await axios.post('https://api.slipok.com/api/line/apikey/66773', form, {
-            headers: {
-                ...form.getHeaders(),
-                'x-api-key': 'SLIPOKWS7CZU1'
-            }
-        });
+const response = await axios.post('https://api.slipok.com/api/v1/transfer/verify', form, {
+    headers: {
+        ...form.getHeaders(),
+        'x-api-key': 'SLIPOKWS7CZU1'
+    }
+});
 
         res.json({ success: true, result: response.data });
 
