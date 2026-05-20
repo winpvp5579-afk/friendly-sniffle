@@ -1,9 +1,12 @@
 const express = require('express');
-const axios = require('axios');
 const multer = require('multer');
-const FormData = require('form-data');
+const { SlipVerify } = require('slipverify');
+
 const app = express();
 const upload = multer({ storage: multer.memoryStorage() });
+
+// ใส่ API Key ที่ได้มาจากหน้า Dashboard ของ SlipVerify.com
+const sv = new SlipVerify({ apiKey: 'YOUR_SLIPVERIFY_API_KEY' });
 
 app.use(express.static(__dirname));
 
@@ -11,34 +14,13 @@ app.post('/api/verify-slip', upload.single('slip'), async (req, res) => {
     try {
         if (!req.file) return res.status(400).json({ success: false, message: 'ไม่มีไฟล์สลิป' });
 
-        const form = new FormData();
-// แก้ไขตรงนี้เป็น 'files'
-form.append('files', req.file.buffer, { filename: 'slip.jpg' }); 
+        // ใช้คำสั่ง .verify() จาก SDK 
+        // ระบบจะจัดการส่งข้อมูลเข้า API ที่ถูกต้องให้ทันที ไม่ต้องกังวลเรื่อง Endpoint
+        const result = await sv.verify(req.file.buffer);
 
-const response = await axios.post('https://api.slipok.com/api/v1/transfer/verify', form, {
-    headers: {
-        ...form.getHeaders(),
-        'x-api-key': 'SLIPOKWS7CZU1'
-    }
-});
-
-        res.json({ success: true, result: response.data });
-
+        res.json({ success: true, data: result });
     } catch (error) {
-        // --- ส่วนนี้คือระบบรายงานจุดพัง ---
-        let errorMessage = 'ตรวจสอบไม่ผ่าน';
-        
-        if (error.response) {
-            // ดึงข้อความจาก SlipOK โดยตรง (เช่น สลิปซ้ำ, ไม่พบ QR)
-            errorMessage = `SlipOK Error: ${JSON.stringify(error.response.data)}`;
-        } else if (error.request) {
-            errorMessage = 'ไม่สามารถติดต่อเซิร์ฟเวอร์ SlipOK ได้';
-        } else {
-            errorMessage = error.message;
-        }
-
-        console.error("DEBUG - รายละเอียดจุดพัง:", errorMessage);
-        res.status(500).json({ success: false, message: errorMessage });
+        res.status(500).json({ success: false, message: error.message });
     }
 });
 
