@@ -1,6 +1,7 @@
 const express = require('express');
 const axios = require('axios');
 const multer = require('multer');
+const FormData = require('form-data');
 const app = express();
 const upload = multer({ storage: multer.memoryStorage() });
 
@@ -10,31 +11,23 @@ app.post('/api/verify-slip', upload.single('slip'), async (req, res) => {
     try {
         if (!req.file) return res.status(400).json({ success: false, message: 'กรุณาอัปโหลดสลิป' });
 
-        // วิธีนี้เราไม่ใช้ FormData แต่ส่งเป็น JSON
-        // *หมายเหตุ: บางระบบของ SlipOK LINE ต้องการให้ส่งไฟล์เป็น Base64 หรือต้องอัปรูปขึ้นที่อื่นก่อน
-        // แต่ลองส่งด้วยชื่อ field 'file' แบบเก่าในรูปแบบ JSON ดูครับ
-        
-        const response = await axios.post('https://api.slipok.com/api/line/apikey/66773', {
-            // ลองส่งข้อมูลในรูปแบบนี้
-            file: req.file.buffer.toString('base64') 
-        }, {
+        const form = new FormData();
+        form.append('files', req.file.buffer, { filename: 'slip.jpg' }); // ลองเปลี่ยนกลับเป็น 'files' ตามมาตรฐาน OpenAPI
+
+        const slipResult = await axios.post('https://api.slipok.com/api/v1/openapi/verify', form, {
             headers: {
-                'x-api-key': 'SLIPOKWS7CZU1',
-                'Content-Type': 'application/json'
+                ...form.getHeaders(),
+                'x-authorization': 'SLIPOKWS7CZU1'
             }
         });
 
-        if (response.data && response.data.status === 'success') {
-            const amount = response.data.data.amount;
-            res.json({ success: true, message: `สำเร็จ! ยอด: ${amount} บาท` });
-        } else {
-            res.json({ success: false, message: 'ตรวจสอบไม่ผ่าน: ' + JSON.stringify(response.data) });
-        }
+        res.json({ success: true, data: slipResult.data });
     } catch (error) {
-        console.error("Error Detail:", error.response ? error.response.data : error.message);
-        res.status(500).json({ success: false, message: 'เกิดข้อผิดพลาด' });
+        // บรรทัดนี้สำคัญมาก: มันจะบอกเราว่า SlipOK ตอบกลับมาว่าอะไร
+        const errorMsg = error.response ? error.response.data : error.message;
+        console.error("SlipOK Error Response:", errorMsg);
+        res.status(500).json({ success: false, message: errorMsg });
     }
 });
 
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+app.listen(3000, () => console.log('Server running on port 3000'));
