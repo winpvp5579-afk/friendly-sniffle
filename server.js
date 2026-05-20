@@ -14,13 +14,13 @@ app.post('/api/verify-slip', upload.single('slip'), async (req, res) => {
         const form = new FormData();
         form.append('files', req.file.buffer, { filename: 'slip.jpg' });
 
-        // ส่ง Header ให้ถูกต้องตามมาตรฐาน SlipOK
+        // ปรับการส่ง Header ให้ชัดเจนที่สุด
         const slipResult = await axios.post('https://api.slipok.com/api/line/apikey/66773', 
             form, 
             { 
                 headers: { 
-                    ...form.getHeaders(),
-                    'x-api-key': 'SLIPOKWS7CZU1' 
+                    ...form.getHeaders(), 
+                    'x-api-key': 'SLIPOKWS7CZU1'
                 } 
             }
         );
@@ -48,7 +48,7 @@ app.post('/api/verify-slip', upload.single('slip'), async (req, res) => {
         }
     } catch (error) {
         console.error("Error Detail:", error.response ? error.response.data : error.message);
-        res.status(500).json({ success: false, message: 'เกิดข้อผิดพลาดในการตรวจสอบสลิป' });
+        res.status(500).json({ success: false, message: 'เซิร์ฟเวอร์ขัดข้อง' });
     }
 });
 
