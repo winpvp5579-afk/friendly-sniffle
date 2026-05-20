@@ -10,21 +10,21 @@ app.post('/api/verify-slip', upload.single('slip'), async (req, res) => {
     try {
         if (!req.file) return res.status(400).json({ success: false, message: 'กรุณาอัปโหลดสลิป' });
 
-        // 1. ตรวจสอบว่ามี Token ครบไหม
         if (!process.env.DISCORD_WEBHOOK_URL || !process.env.STREAMLABS_TOKEN) {
             console.error("Missing Environment Variables");
             return res.status(500).json({ success: false, message: 'ยังไม่ได้ตั้งค่า Token ใน Render' });
         }
 
+        // แปลงไฟล์เป็น Base64
         const imageBase64 = req.file.buffer.toString('base64');
         
-        // 2. ตรวจสอบ SlipOK
+        // 2. ตรวจสอบ SlipOK (แก้ไขตรงนี้ครับ)
         const slipResult = await axios.post('https://api.slipok.com/api/line/apikey/66773', 
-            { image: imageBase64 }, 
+            { files: imageBase64 }, // เปลี่ยนจาก { image: ... } เป็น { files: ... }
             { headers: { 'x-api-key': 'SLIPOKWS7CZU1' } }
         );
 
-        if (slipResult.data && slipResult.data.data.status === 'SUCCESS') {
+        if (slipResult.data && slipResult.data.data && slipResult.data.data.status === 'SUCCESS') {
             const amount = slipResult.data.data.amount;
             const { username, message } = req.body;
 
@@ -45,11 +45,11 @@ app.post('/api/verify-slip', upload.single('slip'), async (req, res) => {
 
             res.json({ success: true, message: `ยืนยันยอด ${amount} บาท สำเร็จ!` });
         } else {
-            res.json({ success: false, message: 'สลิปไม่ถูกต้อง' });
+            res.json({ success: false, message: 'สลิปไม่ถูกต้อง หรือตรวจสอบไม่ผ่าน' });
         }
     } catch (error) {
         console.error("Error Detail:", error.response ? error.response.data : error.message);
-        res.status(500).json({ success: false, message: 'เซิร์ฟเวอร์ขัดข้อง (ตรวจสอบ Logs ใน Render)' });
+        res.status(500).json({ success: false, message: 'เซิร์ฟเวอร์ขัดข้อง' });
     }
 });
 
