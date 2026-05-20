@@ -1,7 +1,6 @@
 const express = require('express');
 const axios = require('axios');
 const multer = require('multer');
-const FormData = require('form-data');
 const app = express();
 const upload = multer({ storage: multer.memoryStorage() });
 
@@ -11,35 +10,29 @@ app.post('/api/verify-slip', upload.single('slip'), async (req, res) => {
     try {
         if (!req.file) return res.status(400).json({ success: false, message: 'กรุณาอัปโหลดสลิป' });
 
-        const form = new FormData();
-        form.append('image', req.file.buffer, { filename: 'slip.jpg' });
-
-        // เปลี่ยน header เป็น x-authorization ตามมาตรฐาน OpenAPI ของ SlipOK
-        const slipResult = await axios.post('https://api.slipok.com/api/v1/openapi/verify', 
-            form, 
-            { 
-                headers: { 
-                    ...form.getHeaders(), 
-                    'x-authorization': 'SLIPOKWS7CZU1' 
-                } 
+        // วิธีนี้เราไม่ใช้ FormData แต่ส่งเป็น JSON
+        // *หมายเหตุ: บางระบบของ SlipOK LINE ต้องการให้ส่งไฟล์เป็น Base64 หรือต้องอัปรูปขึ้นที่อื่นก่อน
+        // แต่ลองส่งด้วยชื่อ field 'file' แบบเก่าในรูปแบบ JSON ดูครับ
+        
+        const response = await axios.post('https://api.slipok.com/api/line/apikey/66773', {
+            // ลองส่งข้อมูลในรูปแบบนี้
+            file: req.file.buffer.toString('base64') 
+        }, {
+            headers: {
+                'x-api-key': 'SLIPOKWS7CZU1',
+                'Content-Type': 'application/json'
             }
-        );
+        });
 
-        if (slipResult.data && slipResult.data.status === 'success') {
-            const amount = slipResult.data.data.amount;
-            const { username, message } = req.body;
-
-            await axios.post(process.env.DISCORD_WEBHOOK_URL, {
-                content: `🎉 **${username}** โดเนทมา **${amount}** บาท!\nข้อความ: ${message}`
-            });
-
-            res.json({ success: true, message: `ยืนยันยอด ${amount} บาท สำเร็จ!` });
+        if (response.data && response.data.status === 'success') {
+            const amount = response.data.data.amount;
+            res.json({ success: true, message: `สำเร็จ! ยอด: ${amount} บาท` });
         } else {
-            res.status(400).json({ success: false, message: 'สลิปไม่ถูกต้อง' });
+            res.json({ success: false, message: 'ตรวจสอบไม่ผ่าน: ' + JSON.stringify(response.data) });
         }
     } catch (error) {
-        console.error("Critical Error Detail:", error.response ? JSON.stringify(error.response.data) : error.message);
-        res.status(500).json({ success: false, message: 'ตรวจสอบสลิปไม่ผ่าน' });
+        console.error("Error Detail:", error.response ? error.response.data : error.message);
+        res.status(500).json({ success: false, message: 'เกิดข้อผิดพลาด' });
     }
 });
 
